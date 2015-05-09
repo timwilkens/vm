@@ -36,42 +36,7 @@ typedef enum {
 
 int64_t regs[NUM_OF_REGISTERS];
 
-// Simple decreasing while loop
-/*const int64_t program[] = {
-	SET, R1, 50,
-	SET, R2, 5,
-	SUB, R1, R2,
-	SHOW, R1,
-	JNZ, R1, 6,
-	LOAD, R1, 
-	STOP
-}; */
-
-// Compute 10 factorial
-/*const int64_t program[] = {
-	SET, R1, 1, // Accumulate here
-	SET, R2, 10, 
-	SET, R3, 1, // For SUB
-	MULT, R1, R2,
-	SUB, R2, R3,
-	JNZ, R2, 6,
-	SHOW, R1,
-	STOP,
-};*/
-
-// Count down using JNE
-const int64_t program[] = {
-	SET, R1, 10,
-	SET, R2, 20,
-	SET, R3, 1,
-	CMP, R1, R2,
-	SHOW, R2,
-	SUB, R2, R3,
-	JLT, 9,
-	STOP
-};
-
-int64_t NUM_INSTR = (int64_t)(sizeof(program) / sizeof(program[0]));
+int64_t NUM_INSTR;
 
 // Current instruction pointer.
 // Index into the program array.
@@ -90,10 +55,6 @@ int z = 0;
 
 bool running = true;
 
-int64_t fetch() {
-	return program[ip];
-}
-
 // Ensure ++ip is valid.
 // Die if it isn't.
 void validate_ip(char *func) {
@@ -103,14 +64,10 @@ void validate_ip(char *func) {
 	}
 }
 
-void validate_r(int64_t n) {
-	if (n >= NUM_OF_REGISTERS) {
-		printf("*** Illegal register: %lld\n", n);
-		exit(1);
-	}
-}
+void eval(int64_t program[]) {
 
-void eval(int64_t instr) {
+	int64_t instr = program[ip];
+
 	switch (instr) {
 		case NOP: {
 			break;
@@ -134,17 +91,15 @@ void eval(int64_t instr) {
 				exit(1);
 			}
 			int64_t popped = stack[sp--];
-			printf("POPPED: %lld\n", popped);
+			printf("%lld\n", popped);
 			break;
 		}
 		case ADD: {
 			validate_ip("ADD");
 			int64_t r_one = program[ip];
-			validate_r(r_one);
 
 			validate_ip("ADD");
 			int64_t r_two = program[ip];
-			validate_r(r_two);
 
 			regs[r_one] = regs[r_one] + regs[r_two];
 			break;
@@ -153,11 +108,9 @@ void eval(int64_t instr) {
 		case SUB: {
 			validate_ip("SUB");
 			int64_t r_one = program[ip];
-			validate_r(r_one);
 
 			validate_ip("SUB");
 			int64_t r_two = program[ip];
-			validate_r(r_two);
 
 			regs[r_one] = regs[r_one] - regs[r_two];
 			break;
@@ -166,11 +119,9 @@ void eval(int64_t instr) {
 		case DIV: {
 			validate_ip("DIV");
 			int64_t r_one = program[ip];
-			validate_r(r_one);
 
 			validate_ip("DIV");
 			int64_t r_two = program[ip];
-			validate_r(r_two);
 
 			regs[r_one] = regs[r_one] / regs[r_two];
 			break;
@@ -178,11 +129,9 @@ void eval(int64_t instr) {
 		case MULT: {
 			validate_ip("MULT");
 			int64_t r_one = program[ip];
-			validate_r(r_one);
 
 			validate_ip("MULT");
 			int64_t r_two = program[ip];
-			validate_r(r_two);
 
 			regs[r_one] = regs[r_one] * regs[r_two];
 			break;
@@ -190,7 +139,6 @@ void eval(int64_t instr) {
 		case SET: {
 			validate_ip("SET");
 			int64_t dest = program[ip];
-			validate_r(dest);
 
 			validate_ip("SET");
 			int64_t val = program[ip];
@@ -200,20 +148,17 @@ void eval(int64_t instr) {
 		}
 		case SHOW: {
 			validate_ip("SHOW");
-			validate_r(program[ip]);
 
 			int64_t val = regs[program[ip]];
-			printf("REG: %lld VAL: %lld\n", program[ip], val);
+			printf("%lld\n", val);
 			break;
 		}
 		case MOV: {
 			validate_ip("MOV");
 			int64_t r_one = program[ip];
-			validate_r(r_one);
 
 			validate_ip("MOV");
 			int64_t r_two = program[ip];
-			validate_r(r_two);
 
 			regs[r_one] = regs[r_two];
 			break;
@@ -221,7 +166,6 @@ void eval(int64_t instr) {
 		case LOAD: {
 			validate_ip("LOAD");
 			int64_t r = program[ip];
-			validate_r(r);
 
 			if (++sp >= STACK_SIZE) {
 				printf("*** Stack overflow");
@@ -234,7 +178,6 @@ void eval(int64_t instr) {
 			int64_t val = stack[sp--];
 			validate_ip("STORE");
 			int64_t r = program[ip];
-			validate_r(r);
 
 			regs[r] = val;
 			break;
@@ -247,7 +190,6 @@ void eval(int64_t instr) {
 		}
 		case JZ: {
 			validate_ip("JZ");
-			validate_r(program[ip]);
 
 			int64_t val = regs[program[ip]];
 			validate_ip("JZ");
@@ -259,7 +201,6 @@ void eval(int64_t instr) {
 		}
 		case JNZ: {
 			validate_ip("JNZ");
-			validate_r(program[ip]);
 
 			int64_t val = regs[program[ip]];
 			validate_ip("JNZ");
@@ -272,11 +213,9 @@ void eval(int64_t instr) {
 		case CMP: {
 			validate_ip("CMP");
 			int64_t r_one = program[ip];
-			validate_r(r_one);
 
 			validate_ip("CMP");
 			int64_t r_two = program[ip];
-			validate_r(r_one);
 
 			int64_t val_one = regs[r_one];
 			int64_t val_two = regs[r_two];
@@ -316,9 +255,38 @@ void eval(int64_t instr) {
 	}
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+
+	if (argc < 2) {
+		printf("File required\n");
+        	return 1;
+	}
+
+    	FILE *fp = fopen(argv[1], "rb");
+    	if (fp == NULL) {
+        	printf("Failed to open: %s\n", argv[1]);
+        	return 1;
+    	}
+
+	fseek(fp, 0, SEEK_END);
+        NUM_INSTR = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+
+	if (NUM_INSTR % 8 != 0) {
+		printf("Invalid binary size: %lld\n", NUM_INSTR);
+		exit(1);
+	}
+
+	int64_t program[NUM_INSTR];
+
+	int64_t instruction;
+	int i = 0;
+    	while (fread(&instruction, sizeof(instruction), 1, fp) == 1) {
+		program[i++] = instruction;
+	}
+
 	while (running) {
-		eval(fetch());
+		eval(program);
 		ip++;
 	}
 
