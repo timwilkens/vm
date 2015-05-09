@@ -1,9 +1,9 @@
-SRC_FILES = main.c
+SRC_FILES = vm.c
 CC_FLAGS = -Wall -Wextra -g -std=c11
 CC = clang
 
 all:
-	${CC} ${SRC_FILES} ${CC_FLAGS} -o mac
+	${CC} ${SRC_FILES} ${CC_FLAGS} -o vm
 
 clean:
-	rm -f mac
+	rm -f vm
