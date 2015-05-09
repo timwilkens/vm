@@ -20,6 +20,11 @@ typedef enum{
 	JMP, // Move ip to the value passed in
 	JZ, // Compare passed in reg to zero and jump if equal.
 	JNZ, // Compare passed in reg to zero and jump if not equal.
+	JE, // Jump to the instruction if last compare = 0
+	JNE, // Jump to the instruction if last compare != 0
+	JLT, // Jump to the instruction if last compare = -1
+	JGT, // Jump to the instruction if last compare = 1
+	CMP, // Compare reg 1 to reg 2. Store result in z.
 	STOP // End
 } InstructionSet;
 
@@ -43,15 +48,27 @@ int64_t regs[NUM_OF_REGISTERS];
 }; */
 
 // Compute 10 factorial
-const int64_t program[] = {
+/*const int64_t program[] = {
 	SET, R1, 1, // Accumulate here
-	SET, R2, 20, 
+	SET, R2, 10, 
 	SET, R3, 1, // For SUB
 	MULT, R1, R2,
 	SUB, R2, R3,
 	JNZ, R2, 6,
 	SHOW, R1,
 	STOP,
+};*/
+
+// Count down using JNE
+const int64_t program[] = {
+	SET, R1, 10,
+	SET, R2, 20,
+	SET, R3, 1,
+	CMP, R1, R2,
+	SHOW, R2,
+	SUB, R2, R3,
+	JLT, 9,
+	STOP
 };
 
 int64_t NUM_INSTR = (int64_t)(sizeof(program) / sizeof(program[0]));
@@ -66,6 +83,10 @@ int64_t sp = -1;
 // Fixed stack size.
 const int64_t STACK_SIZE = 256;
 int64_t stack[STACK_SIZE];
+
+// Set on CMP instructions.
+// -1 for less, 0 for equal, 1 for greater
+int z = 0;
 
 bool running = true;
 
@@ -100,7 +121,7 @@ void eval(int64_t instr) {
 		}
 		case PUSH: {
 			if (++sp >= STACK_SIZE) {
-				printf("*** Stack overflow");
+				printf("*** Stack overflow\n");
 				exit(1);
 			}
 			validate_ip("PUSH");
@@ -182,7 +203,7 @@ void eval(int64_t instr) {
 			validate_r(program[ip]);
 
 			int64_t val = regs[program[ip]];
-			printf("REG: %lldd VAL: %lld\n", program[ip], val);
+			printf("REG: %lld VAL: %lld\n", program[ip], val);
 			break;
 		}
 		case MOV: {
@@ -245,6 +266,50 @@ void eval(int64_t instr) {
 			if (val != 0) {
 				int64_t addr = program[ip];
 				ip = (addr-1);
+			}
+			break;
+		}
+		case CMP: {
+			validate_ip("CMP");
+			int64_t r_one = program[ip];
+			validate_r(r_one);
+
+			validate_ip("CMP");
+			int64_t r_two = program[ip];
+			validate_r(r_one);
+
+			int64_t val_one = regs[r_one];
+			int64_t val_two = regs[r_two];
+
+			z = val_one < val_two ? -1 :
+				val_one == val_two ? 0 : 1;
+			break;
+		}
+		case JE: {
+			validate_ip("JE");
+			if (z == 0) {
+				ip = (program[ip]-1);
+			}
+			break;
+		}
+		case JNE: {
+			validate_ip("JNE");
+			if (z != 0) {
+				ip = (program[ip]-1);
+			}
+			break;
+		}
+		case JLT: {
+			validate_ip("JLT");
+			if (z == -1) {
+				ip = (program[ip]-1);
+			}
+			break;
+		}
+		case JGT: {
+			validate_ip("JGT");
+			if (z == 1) {
+				ip = (program[ip]-1);
 			}
 			break;
 		}
