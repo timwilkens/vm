@@ -29,10 +29,10 @@ typedef enum {
 	NUM_OF_REGISTERS
 } Registers;
 
-int regs[NUM_OF_REGISTERS];
+int64_t regs[NUM_OF_REGISTERS];
 
 // Simple decreasing while loop
-/*const int program[] = {
+/*const int64_t program[] = {
 	SET, R1, 50,
 	SET, R2, 5,
 	SUB, R1, R2,
@@ -43,9 +43,9 @@ int regs[NUM_OF_REGISTERS];
 }; */
 
 // Compute 10 factorial
-const int program[] = {
+const int64_t program[] = {
 	SET, R1, 1, // Accumulate here
-	SET, R2, 10, 
+	SET, R2, 20, 
 	SET, R3, 1, // For SUB
 	MULT, R1, R2,
 	SUB, R2, R3,
@@ -54,22 +54,22 @@ const int program[] = {
 	STOP,
 };
 
-int NUM_INSTR = (int)(sizeof(program) / sizeof(program[0]));
+int64_t NUM_INSTR = (int64_t)(sizeof(program) / sizeof(program[0]));
 
 // Current instruction pointer.
 // Index into the program array.
-int ip = 0;
+int64_t ip = 0;
 
 // Stack pointer. -1 indicates not set.
-int sp = -1;
+int64_t sp = -1;
 
 // Fixed stack size.
-const int STACK_SIZE = 256;
-int stack[STACK_SIZE];
+const int64_t STACK_SIZE = 256;
+int64_t stack[STACK_SIZE];
 
 bool running = true;
 
-int fetch() {
+int64_t fetch() {
 	return program[ip];
 }
 
@@ -82,14 +82,14 @@ void validate_ip(char *func) {
 	}
 }
 
-void validate_r(int n) {
+void validate_r(int64_t n) {
 	if (n >= NUM_OF_REGISTERS) {
-		printf("*** Illegal register: %d\n", n);
+		printf("*** Illegal register: %lld\n", n);
 		exit(1);
 	}
 }
 
-void eval(int instr) {
+void eval(int64_t instr) {
 	switch (instr) {
 		case NOP: {
 			break;
@@ -112,17 +112,17 @@ void eval(int instr) {
 				printf("*** Pop from empty stack\n");
 				exit(1);
 			}
-			int popped = stack[sp--];
-			printf("POPPED: %d\n", popped);
+			int64_t popped = stack[sp--];
+			printf("POPPED: %lld\n", popped);
 			break;
 		}
 		case ADD: {
 			validate_ip("ADD");
-			int r_one = program[ip];
+			int64_t r_one = program[ip];
 			validate_r(r_one);
 
 			validate_ip("ADD");
-			int r_two = program[ip];
+			int64_t r_two = program[ip];
 			validate_r(r_two);
 
 			regs[r_one] = regs[r_one] + regs[r_two];
@@ -131,11 +131,11 @@ void eval(int instr) {
 
 		case SUB: {
 			validate_ip("SUB");
-			int r_one = program[ip];
+			int64_t r_one = program[ip];
 			validate_r(r_one);
 
 			validate_ip("SUB");
-			int r_two = program[ip];
+			int64_t r_two = program[ip];
 			validate_r(r_two);
 
 			regs[r_one] = regs[r_one] - regs[r_two];
@@ -144,11 +144,11 @@ void eval(int instr) {
 
 		case DIV: {
 			validate_ip("DIV");
-			int r_one = program[ip];
+			int64_t r_one = program[ip];
 			validate_r(r_one);
 
 			validate_ip("DIV");
-			int r_two = program[ip];
+			int64_t r_two = program[ip];
 			validate_r(r_two);
 
 			regs[r_one] = regs[r_one] / regs[r_two];
@@ -156,11 +156,11 @@ void eval(int instr) {
 		}
 		case MULT: {
 			validate_ip("MULT");
-			int r_one = program[ip];
+			int64_t r_one = program[ip];
 			validate_r(r_one);
 
 			validate_ip("MULT");
-			int r_two = program[ip];
+			int64_t r_two = program[ip];
 			validate_r(r_two);
 
 			regs[r_one] = regs[r_one] * regs[r_two];
@@ -168,11 +168,11 @@ void eval(int instr) {
 		}
 		case SET: {
 			validate_ip("SET");
-			int dest = program[ip];
+			int64_t dest = program[ip];
 			validate_r(dest);
 
 			validate_ip("SET");
-			int val = program[ip];
+			int64_t val = program[ip];
 
 			regs[dest] = val;
 			break;
@@ -181,17 +181,17 @@ void eval(int instr) {
 			validate_ip("SHOW");
 			validate_r(program[ip]);
 
-			int val = regs[program[ip]];
-			printf("REG: %d VAL: %d\n", program[ip], val);
+			int64_t val = regs[program[ip]];
+			printf("REG: %lldd VAL: %lld\n", program[ip], val);
 			break;
 		}
 		case MOV: {
 			validate_ip("MOV");
-			int r_one = program[ip];
+			int64_t r_one = program[ip];
 			validate_r(r_one);
 
 			validate_ip("MOV");
-			int r_two = program[ip];
+			int64_t r_two = program[ip];
 			validate_r(r_two);
 
 			regs[r_one] = regs[r_two];
@@ -199,7 +199,7 @@ void eval(int instr) {
 		}
 		case LOAD: {
 			validate_ip("LOAD");
-			int r = program[ip];
+			int64_t r = program[ip];
 			validate_r(r);
 
 			if (++sp >= STACK_SIZE) {
@@ -210,9 +210,9 @@ void eval(int instr) {
 			break;
 		}
 		case STORE: {
-			int val = stack[sp--];
+			int64_t val = stack[sp--];
 			validate_ip("STORE");
-			int r = program[ip];
+			int64_t r = program[ip];
 			validate_r(r);
 
 			regs[r] = val;
@@ -220,7 +220,7 @@ void eval(int instr) {
 		}
 		case JMP: {
 			validate_ip("JMP");
-			int addr = program[ip];
+			int64_t addr = program[ip];
 			ip = (addr-1); // Eval loop increments for us
 			break;
 		}
@@ -228,10 +228,10 @@ void eval(int instr) {
 			validate_ip("JZ");
 			validate_r(program[ip]);
 
-			int val = regs[program[ip]];
+			int64_t val = regs[program[ip]];
 			validate_ip("JZ");
 			if (val == 0) {
-				int addr = program[ip];
+				int64_t addr = program[ip];
 				ip = (addr-1);
 			}
 			break;
@@ -240,10 +240,10 @@ void eval(int instr) {
 			validate_ip("JNZ");
 			validate_r(program[ip]);
 
-			int val = regs[program[ip]];
+			int64_t val = regs[program[ip]];
 			validate_ip("JNZ");
 			if (val != 0) {
-				int addr = program[ip];
+				int64_t addr = program[ip];
 				ip = (addr-1);
 			}
 			break;
