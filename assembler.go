@@ -189,17 +189,22 @@ func maybeDie(err error) {
 	}
 }
 
+func die(s string) {
+	fmt.Println(s)
+	os.Exit(1)
+}
+
 func main() {
 	in := flag.String("in", "", "Input file")
 	out := flag.String("out", "", "Output file")
 	flag.Parse()
 
 	if *in == "" {
-		maybeDie(errors.New("in is required"))
+		die("in is required")
 	}
 
 	if *out == "" {
-		maybeDie(errors.New("out is required"))
+		die("out is required")
 	}
 
 	file, err := os.Open(*in)
@@ -214,9 +219,12 @@ func main() {
 	// Any jump instruction must be to one of these.
 	jmpPoints := make(map[int64]bool)
 
+	lineNumber := 0
+
 	for {
 		line, err := reader.ReadString('\n')
 		line = strings.TrimSuffix(line, "\n")
+		lineNumber++
 
 		if err != nil {
 			break
@@ -235,7 +243,9 @@ func main() {
 		jmpPoints[int64(len(instructions))] = true
 
 		codes, err := toIntCodes(line)
-		maybeDie(err)
+		if err != nil {
+			die(fmt.Sprintf("Line %d - ERROR: %s", lineNumber, err.Error()))
+		}
 
 		for _, c := range codes {
 			instructions = append(instructions, c)
@@ -245,7 +255,7 @@ func main() {
 	// Check that jumps are valid.
 	for _, jc := range jmpCodes {
 		if !jmpPoints[jc] {
-			maybeDie(errors.New(fmt.Sprintf("Invalid jump addr: %d", jc)))
+			die(fmt.Sprintf("Invalid jump addr: %d", jc))
 		}
 	}
 
