@@ -25,12 +25,14 @@ typedef enum{
 	JLT, // Jump to the instruction if last compare = -1
 	JGT, // Jump to the instruction if last compare = 1
 	CMP, // Compare reg 1 to reg 2. Store result in z.
+	INC, // increment value in reg by 1
 	STOP // End
 } InstructionSet;
 
 typedef enum {
 	R1, R2,  R3,  R4,  R5,  R6,  R7,  R8,
 	R9, R10, R11, R12, R13, R14, R15, R16,
+	Q,
 	NUM_OF_REGISTERS
 } Registers;
 
@@ -50,8 +52,12 @@ const int64_t STACK_SIZE = 256;
 int64_t stack[STACK_SIZE];
 
 // Set on CMP instructions.
-// -1 for less, 0 for equal, 1 for greater
+// -1 for less, 0 for equal, 1 for greater.
 int z = 0;
+
+// Set on DIV instructions.
+// Contains the quotient.
+int q = 1;
 
 bool running = true;
 
@@ -102,6 +108,7 @@ void eval(int64_t program[]) {
 		case DIV: {
 			int64_t r_one = program[++ip];
 			int64_t r_two = program[++ip];
+			regs[Q] = regs[r_one] % regs[r_two];
 			regs[r_one] = regs[r_one] / regs[r_two];
 			break;
 		}
@@ -201,6 +208,11 @@ void eval(int64_t program[]) {
 			if (z == 1) {
 				ip = (program[ip]-1);
 			}
+			break;
+		}
+		case INC: {
+			ip++;
+			regs[program[ip]] += 1;
 			break;
 		}
 	}

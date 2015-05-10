@@ -32,7 +32,8 @@ var opCodes map[string]int64 = map[string]int64{
 	"JLT":   17,
 	"JGT":   18,
 	"CMP":   19,
-	"STOP":  20,
+	"INC":   20,
+	"STOP":  21,
 }
 
 var regs map[string]int64 = map[string]int64{
@@ -52,9 +53,10 @@ var regs map[string]int64 = map[string]int64{
 	"R14": 13,
 	"R15": 14,
 	"R16": 15,
+	"Q":   16,
 }
 
-var numRegisters = 16
+var numRegisters = len(regs)
 
 var jmpCodes []int64
 
@@ -74,7 +76,7 @@ func toIntCodes(line string) ([]int64, error) {
 		codes, err = parseNoArg(parts)
 	case "JMP", "JE", "JNE", "JLT", "JGT":
 		codes, err = parseValue(parts)
-	case "SHOW", "LOAD", "STORE":
+	case "SHOW", "LOAD", "STORE", "INC":
 		codes, err = parseReg(parts)
 	case "PUSH", "SET", "JZ", "JNZ":
 		codes, err = parseRegAndVal(parts)
@@ -82,6 +84,10 @@ func toIntCodes(line string) ([]int64, error) {
 		codes, err = parseTwoReg(parts)
 	default:
 		codes, err = nil, errors.New(fmt.Sprintf("Unknown op: %s", op))
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	// Store jump addresses.
@@ -214,6 +220,16 @@ func main() {
 
 		if err != nil {
 			break
+		}
+
+		// Support blank lines
+		if line == "" {
+			continue
+		}
+
+		// Skip Comments
+		if strings.HasPrefix(line, "#") {
+			continue
 		}
 
 		jmpPoints[int64(len(instructions))] = true

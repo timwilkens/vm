@@ -1,3 +1,4 @@
+# Compute 10 factorial
 SET R1 1
 SET R2 10
 SET R3 1
