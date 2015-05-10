@@ -7,27 +7,27 @@ SET R3 $1000
 
 # See if divisible by 3
 # Copy into R4 to overwrite
-MOV R4 R1
+!LOOP MOV R4 R1
 DIV R4 $3
 # Skip add if not divisible
-JNZ Q 23
+JNZ Q FIVE
 
 # Divisible by three. Add to accumulator.
 ADD R2 R1
 # Skip checking by 5
-JMP 35
+JMP ENDLOOP
 
 # Check if divisible by 5
-MOV R4 R1
+!FIVE MOV R4 R1
 DIV R4 $5
-JNZ Q 35
+JNZ Q ENDLOOP
 
 ADD R2 R1
 
 # Increment and stop looping when >= 1000
-INC R1
+!ENDLOOP INC R1
 CMP R1 R3
-JLT 9
+JLT LOOP
 # Dump out answer
 SHOW R2
 STOP

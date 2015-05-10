@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -66,6 +67,7 @@ var regs map[string]int64 = map[string]int64{
 var numRegisters = len(regs)
 
 var jmpCodes []int64
+var jmpLabels map[string]int64
 
 func regError(r string) error {
 	return errors.New(fmt.Sprintf("Invalid register: %s", r))
@@ -77,8 +79,10 @@ func stripValue(s string) (int64, error) {
 	return int64(val), err
 }
 
-func toIntCodes(line string) ([]int64, error) {
-	parts := strings.Split(line, " ")
+//var isLabel = regexp.MustCompile(`^[A-Z]$`)
+var isLabel = regexp.MustCompile(`[A-Z]$`)
+
+func toIntCodes(parts []string) ([]int64, error) {
 	op := parts[0]
 
 	var codes []int64
@@ -92,7 +96,7 @@ func toIntCodes(line string) ([]int64, error) {
 		if err == nil {
 			jmpCodes = append(jmpCodes, codes[1])
 		}
-	case "SHOW", "LOAD", "STORE", "INC", "PRINT":
+	case "SHOW", "LOAD", "STORE", "INC", "DEC", "PRINT":
 		codes, err = parseReg(parts)
 	case "PUSH", "SET":
 		codes, err = parseRegAndVal(parts)
@@ -128,12 +132,22 @@ func parseAddr(parts []string) ([]int64, error) {
 		return nil, errors.New("Invalid arguments")
 	}
 
-	val, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return nil, err
+	// Jmp label
+	if isLabel.MatchString(parts[1]) {
+		if addr, ok := jmpLabels[parts[1]]; ok {
+			return []int64{opCodes[parts[0]], addr}, nil
+		} else {
+			return nil, errors.New(fmt.Sprintf("Invalid jmp label: %s", parts[1]))
+		}
+	} else {
+		fmt.Println("NON LABEL")
+		val, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return nil, err
+		}
+		return []int64{opCodes[parts[0]], int64(val)}, nil
 	}
 
-	return []int64{opCodes[parts[0]], int64(val)}, nil
 }
 
 func parseReg(parts []string) ([]int64, error) {
@@ -156,16 +170,28 @@ func parseRegAndAddr(parts []string) ([]int64, error) {
 	r := parts[1]
 
 	if reg, ok := regs[r]; ok {
-		val, err := strconv.Atoi(parts[2])
-		if err != nil {
-			return nil, err
+		if isLabel.MatchString(parts[2]) {
+			if addr, ok := jmpLabels[parts[2]]; ok {
+				instrs := []int64{
+					opCodes[parts[0]],
+					reg,
+					addr}
+				return instrs, nil
+			} else {
+				return nil, errors.New(fmt.Sprintf("Invalid jmp label: %s", parts[1]))
+			}
+		} else {
+			val, err := strconv.Atoi(parts[2])
+			if err != nil {
+				return nil, err
+			}
+			instrs := []int64{
+				opCodes[parts[0]],
+				reg,
+				int64(val),
+			}
+			return instrs, nil
 		}
-		instrs := []int64{
-			opCodes[parts[0]],
-			reg,
-			int64(val),
-		}
-		return instrs, nil
 	} else {
 		return nil, regError(r)
 	}
@@ -292,14 +318,21 @@ func main() {
 	defer file.Close()
 	reader := bufio.NewReader(file)
 
-	var instructions []int64
-
 	// Record the offsets for all instructions.
 	// Any jump instruction must be to one of these.
 	jmpPoints := make(map[int64]bool)
 
 	lineNumber := 0
 
+	var lines []string
+
+	// Init global labels
+	jmpLabels = make(map[string]int64)
+
+	instructionNum := int64(0)
+
+	// Loop through once and record label locations
+	// for expansion later
 	for {
 		line, err := reader.ReadString('\n')
 		line = strings.TrimSuffix(line, "\n")
@@ -309,19 +342,38 @@ func main() {
 			break
 		}
 
-		// Support blank lines
-		if line == "" {
+		// Support blank lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			// Needed for correct line numbers
+			lines = append(lines, line)
 			continue
 		}
 
-		// Skip Comments
-		if strings.HasPrefix(line, "#") {
-			continue
+		jmpPoints[instructionNum] = true
+
+		// Record ip location for labels
+		// Strip label from instruction
+		if strings.HasPrefix(line, "!") {
+			parts := strings.Split(line, " ")
+			label := parts[0]
+			label = strings.TrimPrefix(label, "!")
+			jmpLabels[label] = instructionNum
+			line = strings.Join(parts[1:], " ")
 		}
 
-		jmpPoints[int64(len(instructions))] = true
+		lines = append(lines, line)
 
-		codes, err := toIntCodes(line)
+		instructionNum += int64(len(strings.Split(line, " ")))
+	}
+
+	var instructions []int64
+
+	for _, line := range lines {
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.Split(line, " ")
+		codes, err := toIntCodes(parts)
 		if err != nil {
 			die(fmt.Sprintf("Line %d - ERROR: %s", lineNumber, err.Error()))
 		}
