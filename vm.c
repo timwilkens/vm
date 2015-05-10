@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 // Instructions set values into the first reg passed in.
 
@@ -56,38 +57,77 @@ int64_t IP = 0;
 // Stack pointer. -1 indicates not set.
 int64_t SP = -1;
 
-// Base of current stack frame
-int64_t EBP = 0;
+// Arbitrary size;
+int64_t frame_ptrs[1024];
+int64_t FP = 0;
 
 // Fixed stack size.
-const int64_t STACK_SIZE = 1024;
-int64_t stack[STACK_SIZE];
+int64_t STACK_SIZE = 1024;
+int64_t *stack;
+
+void init_stack() {
+	stack = calloc(STACK_SIZE, sizeof(int64_t));
+}
+
+// Mod stack size by amount
+void mod_stack(float amount) {
+	int64_t new_size = (int64_t)(((float)STACK_SIZE)*amount);
+	int64_t *new_stack = calloc(new_size, sizeof(int64_t));
+	memcpy(new_stack, stack, STACK_SIZE);
+	STACK_SIZE = new_size;
+	free(stack);
+	stack = new_stack;
+}
+
+void grow_stack() {
+	mod_stack(1.25);
+}
+
+void shrink_stack() {
+	mod_stack(1);
+}
+
+void dump_stack() {
+	int i; 
+	for (i = 0; i < STACK_SIZE;i ++) {
+		printf("%d - %lld\n", i, stack[i]);
+	}
+	printf("\n");
+}
 
 // Move the stack pointer and verify we haven't
 // overflowed.
-void inc_and_check_sp() {
+void inc_sp() {
 	if (++SP >= STACK_SIZE) {
-		printf("*** Stack overflow\n");
-		exit(1);
+		grow_stack();
+	}
+}
+
+// Decrement stack pointer and shrink stack if necessary.
+void dec_sp() {
+	if (--SP <= (int64_t)(((float)STACK_SIZE)*0.5)) {
+		shrink_stack();
 	}
 }
 
 void push_r(int64_t r) {
-	inc_and_check_sp();
+	inc_sp();
 	stack[SP] = regs[r];
 }
 
 void push_v(int64_t v) {
-	inc_and_check_sp();
+	inc_sp();
 	stack[SP] = v;
 }
 
 int64_t pop() {
-	if (SP < -1) {
+	if (SP < 0) {
 		printf("*** Pop from empty stack\n");
 		exit(1);
 	}
-	return stack[SP--];
+	int64_t val = stack[SP];
+	dec_sp();
+	return val;
 }
 
 // Store context for function calls.
@@ -109,11 +149,12 @@ void store_context() {
 	push_r(Q);
 	push_r(Z);
 	push_v(IP);
-	EBP = SP;
+	frame_ptrs[FP] = SP;
+	FP++;
 }
 
 void restore_context() {
-	SP = EBP;
+	SP = frame_ptrs[--FP];
 	IP = pop();
 	regs[Z] = pop();
 	regs[Q] = pop();
@@ -145,7 +186,7 @@ void run(int64_t program[]) {
 				break;
 			}
 			case PUSH: {
-				inc_and_check_sp();
+				inc_sp();
 				IP++;
 				stack[SP] = program[IP];
 				break;
@@ -155,8 +196,9 @@ void run(int64_t program[]) {
 					printf("*** Pop from empty stack\n");
 					exit(1);
 				}
-				int64_t popped = stack[SP--];
+				int64_t popped = stack[SP];
 				printf("%lld\n", popped);
+				dec_sp();
 				break;
 			}
 			case ADD: {
@@ -229,12 +271,13 @@ void run(int64_t program[]) {
 			case LOAD: {
 				int64_t r = program[++IP];
 	
-				inc_and_check_sp();
+				inc_sp();
 				stack[SP] = regs[r];
 				break;
 			}
 			case STORE: {
-				int64_t val = stack[SP--];
+				int64_t val = stack[SP];
+				dec_sp();
 				int64_t r = program[++IP];
 				regs[r] = val;
 				break;
@@ -322,6 +365,7 @@ void run(int64_t program[]) {
 			}
 			case RET: {
 				restore_context();
+				break;
 			}
 		}
 		IP++;
@@ -363,6 +407,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	int64_t *program = load_program(argv[1]);
+
+	init_stack();
+
 	run(program);
 	free(program);
 
