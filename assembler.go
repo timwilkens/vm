@@ -33,7 +33,8 @@ var opCodes map[string]int64 = map[string]int64{
 	"JGT":   18,
 	"CMP":   19,
 	"INC":   20,
-	"STOP":  21,
+	"DEC":   21,
+	"STOP":  22,
 }
 
 var regs map[string]int64 = map[string]int64{

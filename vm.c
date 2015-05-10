@@ -26,6 +26,7 @@ typedef enum{
 	JGT, // Jump to the instruction if last compare = 1
 	CMP, // Compare reg 1 to reg 2. Store result in z.
 	INC, // increment value in reg by 1
+	DEC, // decrement value in reg by 1
 	STOP // End
 } InstructionSet;
 
@@ -215,20 +216,26 @@ void eval(int64_t program[]) {
 			regs[program[ip]] += 1;
 			break;
 		}
+		case DEC: {
+			ip++;
+			regs[program[ip]] -= 1;
+			break;
+		}
 	}
 }
 
-int main(int argc, char *argv[]) {
-
-	if (argc < 2) {
-		printf("File required\n");
-        	return 1;
+void run(int64_t program[]) {
+	while (running) {
+		eval(program);
+		ip++;
 	}
+}
 
-    	FILE *fp = fopen(argv[1], "rb");
+int64_t *load_program(char *file) {
+    	FILE *fp = fopen(file, "rb");
     	if (fp == NULL) {
-        	printf("Failed to open: %s\n", argv[1]);
-        	return 1;
+        	printf("Failed to open: %s\n", file);
+        	exit(1);
     	}
 
 	fseek(fp, 0, SEEK_END);
@@ -240,7 +247,7 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-	int64_t program[NUM_INSTR];
+	int64_t *program = malloc(NUM_INSTR*sizeof(int64_t));
 
 	int64_t instruction;
 	int i = 0;
@@ -248,10 +255,19 @@ int main(int argc, char *argv[]) {
 		program[i++] = instruction;
 	}
 
-	while (running) {
-		eval(program);
-		ip++;
+	return program;
+}
+
+int main(int argc, char *argv[]) {
+
+	if (argc < 2) {
+		printf("File required\n");
+        	return 1;
 	}
+
+	int64_t *program = load_program(argv[1]);
+	run(program);
+	free(program);
 
 	return 0;
 }
