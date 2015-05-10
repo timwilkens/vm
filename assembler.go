@@ -89,12 +89,18 @@ func toIntCodes(line string) ([]int64, error) {
 		codes, err = parseNoArg(parts)
 	case "JMP", "JE", "JNE", "JLT", "JGT":
 		codes, err = parseAddr(parts)
+		if err == nil {
+			jmpCodes = append(jmpCodes, codes[1])
+		}
 	case "SHOW", "LOAD", "STORE", "INC", "PRINT":
 		codes, err = parseReg(parts)
 	case "PUSH", "SET":
 		codes, err = parseRegAndVal(parts)
 	case "JZ", "JNZ":
 		codes, err = parseRegAndAddr(parts)
+		if err == nil {
+			jmpCodes = append(jmpCodes, codes[2])
+		}
 	case "ADD", "SUB", "MULT", "DIV":
 		codes, err = parseArithmetic(parts)
 	case "MOV", "CMP":
@@ -105,15 +111,6 @@ func toIntCodes(line string) ([]int64, error) {
 
 	if err != nil {
 		return nil, err
-	}
-
-	// Store jump addresses.
-	// Check after all codes have been parsed.
-	switch op {
-	case "JMP", "JE", "JNE", "JTL", "JGT":
-		jmpCodes = append(jmpCodes, codes[1])
-	case "JZ", "JNZ":
-		jmpCodes = append(jmpCodes, codes[2])
 	}
 
 	return codes, err
