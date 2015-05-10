@@ -1,7 +1,7 @@
 # Compute 10 factorial
-SET R1 $1
-SET R2 $10
-SET R3 $1
+MOV R1 $1
+MOV R2 $10
+MOV R3 $1
 MULT R1 R2
 SUB R2 R3
 JNZ R2 6

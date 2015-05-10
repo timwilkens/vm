@@ -17,8 +17,8 @@ typedef enum{
 	DIV, // Div reg 1 by reg 2, store in first
 	DIVV,
 	POP, // Pop from stack and print
-	SET, // Set reg to value
 	MOV, // Copy from reg 2 to reg 1
+	MOVV,
 	SHOW, // Print value in reg
 	LOAD, // Push from register to stack
 	STORE, // Pop from stack and sore in register
@@ -30,6 +30,7 @@ typedef enum{
 	JLT, // Jump to the instruction if last compare = -1
 	JGT, // Jump to the instruction if last compare = 1
 	CMP, // Compare reg 1 to reg 2. Store result in z.
+	CMPV,
 	INC, // increment value in reg by 1
 	DEC, // decrement value in reg by 1
 	PRINT, // print character stored in reg
@@ -83,10 +84,6 @@ void grow_stack() {
 	mod_stack(1.25);
 }
 
-void shrink_stack() {
-	mod_stack(1);
-}
-
 void dump_stack() {
 	int i; 
 	for (i = 0; i < STACK_SIZE;i ++) {
@@ -100,13 +97,6 @@ void dump_stack() {
 void inc_sp() {
 	if (++SP >= STACK_SIZE) {
 		grow_stack();
-	}
-}
-
-// Decrement stack pointer and shrink stack if necessary.
-void dec_sp() {
-	if (--SP <= (int64_t)(((float)STACK_SIZE)*0.5)) {
-		shrink_stack();
 	}
 }
 
@@ -125,8 +115,7 @@ int64_t pop() {
 		printf("*** Pop from empty stack\n");
 		exit(1);
 	}
-	int64_t val = stack[SP];
-	dec_sp();
+	int64_t val = stack[SP--];
 	return val;
 }
 
@@ -196,9 +185,8 @@ void run(int64_t program[]) {
 					printf("*** Pop from empty stack\n");
 					exit(1);
 				}
-				int64_t popped = stack[SP];
+				int64_t popped = stack[SP--];
 				printf("%lld\n", popped);
-				dec_sp();
 				break;
 			}
 			case ADD: {
@@ -251,7 +239,7 @@ void run(int64_t program[]) {
 				regs[r_one] = regs[r_one] * val;
 				break;
 			}
-			case SET: {
+			case MOVV: {
 				int64_t dest = program[++IP];
 				int64_t val = program[++IP];
 				regs[dest] = val;
@@ -276,8 +264,7 @@ void run(int64_t program[]) {
 				break;
 			}
 			case STORE: {
-				int64_t val = stack[SP];
-				dec_sp();
+				int64_t val = stack[SP--];
 				int64_t r = program[++IP];
 				regs[r] = val;
 				break;
@@ -308,6 +295,14 @@ void run(int64_t program[]) {
 			case CMP: {
 				int64_t val_one = regs[program[++IP]];
 				int64_t val_two = regs[program[++IP]];
+	
+				regs[Z] = val_one < val_two ? -1 :
+					val_one == val_two ? 0 : 1;
+				break;
+			}
+			case CMPV: {
+				int64_t val_one = regs[program[++IP]];
+				int64_t val_two = program[++IP];
 	
 				regs[Z] = val_one < val_two ? -1 :
 					val_one == val_two ? 0 : 1;

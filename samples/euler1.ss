@@ -1,9 +1,9 @@
 # Iteration var
-SET R1 $1
+MOV R1 $1
 # Accumulator
-SET R2 $0
+MOV R2 $0
 # Stop condition
-SET R3 $1000
+MOV R3 $1000
 
 # See if divisible by 3
 # Copy into R4 to overwrite

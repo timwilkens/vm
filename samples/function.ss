@@ -1,5 +1,5 @@
-SET R1 $10
-SET R2 $7
+MOV R1 $10
+MOV R2 $7
 
 CALL FOO
 

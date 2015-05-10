@@ -24,8 +24,8 @@ var opCodes map[string]int64 = map[string]int64{
 	"DIV":   8,
 	"DIVV":  9, // PRIVATE
 	"POP":   10,
-	"SET":   11,
-	"MOV":   12,
+	"MOV":   11,
+	"MOVV":  12, // PRIVATE
 	"SHOW":  13,
 	"LOAD":  14,
 	"STORE": 15,
@@ -37,12 +37,13 @@ var opCodes map[string]int64 = map[string]int64{
 	"JLT":   21,
 	"JGT":   22,
 	"CMP":   23,
-	"INC":   24,
-	"DEC":   25,
-	"PRINT": 26,
-	"CALL":  27,
-	"RET":   28,
-	"STOP":  29,
+	"CMPV":  24, // PRIVATE
+	"INC":   25,
+	"DEC":   26,
+	"PRINT": 27,
+	"CALL":  28,
+	"RET":   29,
+	"STOP":  30,
 }
 
 var regs map[string]int64 = map[string]int64{
@@ -97,18 +98,16 @@ func toIntCodes(parts []string) ([]int64, error) {
 		if err == nil {
 			jmpCodes = append(jmpCodes, codes[1])
 		}
+	case "PUSH":
+		codes, err = parseVal(parts)
 	case "SHOW", "LOAD", "STORE", "INC", "DEC", "PRINT":
 		codes, err = parseReg(parts)
-	case "PUSH", "SET":
-		codes, err = parseRegAndVal(parts)
 	case "JZ", "JNZ":
 		codes, err = parseRegAndAddr(parts)
 		if err == nil {
 			jmpCodes = append(jmpCodes, codes[2])
 		}
-	case "ADD", "SUB", "MULT", "DIV":
-		codes, err = parseArithmetic(parts)
-	case "MOV", "CMP":
+	case "ADD", "SUB", "MULT", "DIV", "MOV", "CMP":
 		codes, err = parseTwoReg(parts)
 	default:
 		codes, err = nil, errors.New(fmt.Sprintf("Unknown op: %s", op))
@@ -126,6 +125,27 @@ func parseNoArg(parts []string) ([]int64, error) {
 		return nil, errors.New("Invalid arguments")
 	}
 	return []int64{opCodes[parts[0]]}, nil
+}
+
+func parseVal(parts []string) ([]int64, error) {
+	if len(parts) != 2 {
+		return nil, errors.New("Invalid arguments")
+	}
+	v := parts[1]
+
+	if strings.HasPrefix(v, "$") {
+		val, err := stripValue(v)
+		if err != nil {
+			return nil, err
+		}
+		instrs := []int64{
+			opCodes[parts[0]],
+			int64(val),
+		}
+		return instrs, nil
+	} else {
+		return nil, errors.New(fmt.Sprintf("Malformed value: %s", parts[2]))
+	}
 }
 
 func parseAddr(parts []string) ([]int64, error) {
@@ -224,30 +244,6 @@ func parseRegAndVal(parts []string) ([]int64, error) {
 }
 
 func parseTwoReg(parts []string) ([]int64, error) {
-	if len(parts) != 3 {
-		return nil, errors.New("Invalid arguments")
-	}
-	r1 := parts[1]
-	r2 := parts[2]
-
-	if reg1, ok := regs[r1]; ok {
-		if reg2, ok := regs[r2]; ok {
-
-			instrs := []int64{
-				opCodes[parts[0]],
-				reg1,
-				reg2,
-			}
-			return instrs, nil
-		} else {
-			return nil, regError(r2)
-		}
-	} else {
-		return nil, regError(r1)
-	}
-}
-
-func parseArithmetic(parts []string) ([]int64, error) {
 	if len(parts) != 3 {
 		return nil, errors.New("Invalid arguments")
 	}
