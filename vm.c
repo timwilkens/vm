@@ -63,19 +63,22 @@ int64_t EBP = 0;
 const int64_t STACK_SIZE = 1024;
 int64_t stack[STACK_SIZE];
 
-void push_r(int64_t r) {
+// Move the stack pointer and verify we haven't
+// overflowed.
+void inc_and_check_sp() {
 	if (++SP >= STACK_SIZE) {
 		printf("*** Stack overflow\n");
 		exit(1);
 	}
+}
+
+void push_r(int64_t r) {
+	inc_and_check_sp();
 	stack[SP] = regs[r];
 }
 
 void push_v(int64_t v) {
-	if (++SP >= STACK_SIZE) {
-		printf("*** Stack overflow\n");
-		exit(1);
-	}
+	inc_and_check_sp();
 	stack[SP] = v;
 }
 
@@ -142,10 +145,7 @@ void run(int64_t program[]) {
 				break;
 			}
 			case PUSH: {
-				if (++SP >= STACK_SIZE) {
-					printf("*** Stack overflow\n");
-					exit(1);
-				}
+				inc_and_check_sp();
 				IP++;
 				stack[SP] = program[IP];
 				break;
@@ -229,10 +229,7 @@ void run(int64_t program[]) {
 			case LOAD: {
 				int64_t r = program[++IP];
 	
-				if (++SP >= STACK_SIZE) {
-					printf("*** Stack overflow");
-					exit(1);
-				}
+				inc_and_check_sp();
 				stack[SP] = regs[r];
 				break;
 			}
