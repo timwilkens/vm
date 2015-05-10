@@ -21,7 +21,7 @@ typedef enum{
 	MOVV,
 	SHOW, // Print value in reg
 	LOAD, // Push from register to stack
-	STORE, // Pop from stack and sore in register
+	STORE, // Pop from stack and store in register
 	JMP, // Move ip to the value passed in
 	JZ, // Compare passed in reg to zero and jump if equal.
 	JNZ, // Compare passed in reg to zero and jump if not equal.

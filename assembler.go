@@ -144,7 +144,7 @@ func parseVal(parts []string) ([]int64, error) {
 		}
 		return instrs, nil
 	} else {
-		return nil, errors.New(fmt.Sprintf("Malformed value: %s", parts[2]))
+		return nil, errors.New(fmt.Sprintf("Malformed value: %s", parts[1]))
 	}
 }
 
@@ -321,8 +321,6 @@ func main() {
 	// Any jump instruction must be to one of these.
 	jmpPoints := make(map[int64]bool)
 
-	lineNumber := 0
-
 	var lines []string
 
 	// Init global labels
@@ -335,7 +333,6 @@ func main() {
 	for {
 		line, err := reader.ReadString('\n')
 		line = strings.TrimSuffix(line, "\n")
-		lineNumber++
 
 		if err != nil {
 			break
@@ -343,6 +340,7 @@ func main() {
 
 		// Support blank lines and comments
 		if line == "" || strings.HasPrefix(line, commentPrefix) {
+			// Don't remove.
 			// Needed for correct line numbers
 			lines = append(lines, line)
 			continue
@@ -367,14 +365,14 @@ func main() {
 
 	var instructions []int64
 
-	for _, line := range lines {
+	for lineNumber, line := range lines {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		parts := strings.Split(line, " ")
 		codes, err := toIntCodes(parts)
 		if err != nil {
-			die(fmt.Sprintf("Line %d - ERROR: %s", lineNumber, err.Error()))
+			die(fmt.Sprintf("Line %d - ERROR: %s", (lineNumber + 1), err.Error()))
 		}
 
 		for _, c := range codes {
