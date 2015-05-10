@@ -31,6 +31,7 @@ typedef enum{
 	CMP, // Compare reg 1 to reg 2. Store result in z.
 	INC, // increment value in reg by 1
 	DEC, // decrement value in reg by 1
+	PRINT, // print character stored in reg
 	STOP // End
 } InstructionSet;
 
@@ -234,13 +235,18 @@ void run(int64_t program[]) {
 				break;
 			}
 			case INC: {
-				IP++;
-				regs[program[IP]] += 1;
+				regs[program[++IP]] += 1;
 				break;
 			}
 			case DEC: {
-				IP++;
-				regs[program[IP]] -= 1;
+				regs[program[++IP]] -= 1;
+				break;
+			}
+			case PRINT: {
+				int64_t r = program[++IP];
+				// Cast down.
+				// Don't put large stuff in here.
+				printf("%c", (int)regs[r]);
 				break;
 			}
 		}

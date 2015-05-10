@@ -38,7 +38,8 @@ var opCodes map[string]int64 = map[string]int64{
 	"CMP":   23,
 	"INC":   24,
 	"DEC":   25,
-	"STOP":  26,
+	"PRINT": 26,
+	"STOP":  27,
 }
 
 var regs map[string]int64 = map[string]int64{
@@ -88,7 +89,7 @@ func toIntCodes(line string) ([]int64, error) {
 		codes, err = parseNoArg(parts)
 	case "JMP", "JE", "JNE", "JLT", "JGT":
 		codes, err = parseAddr(parts)
-	case "SHOW", "LOAD", "STORE", "INC":
+	case "SHOW", "LOAD", "STORE", "INC", "PRINT":
 		codes, err = parseReg(parts)
 	case "PUSH", "SET":
 		codes, err = parseRegAndVal(parts)
