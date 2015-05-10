@@ -1,9 +1,9 @@
 # Compute 10 factorial
-SET R1 1
-SET R2 10
-SET R3 1
+SET R1 $1
+SET R2 $10
+SET R3 $1
 MULT R1 R2
 SUB R2 R3
-JNZ R2 6
+JNZ R2 $6
 SHOW R1
 STOP

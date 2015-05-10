@@ -15,26 +15,30 @@ var opCodes map[string]int64 = map[string]int64{
 	"NOP":   0,
 	"PUSH":  1,
 	"ADD":   2,
-	"SUB":   3,
-	"MULT":  4,
-	"DIV":   5,
-	"POP":   6,
-	"SET":   7,
-	"MOV":   8,
-	"SHOW":  9,
-	"LOAD":  10,
-	"STORE": 11,
-	"JMP":   12,
-	"JZ":    13,
-	"JNZ":   14,
-	"JE":    15,
-	"JNE":   16,
-	"JLT":   17,
-	"JGT":   18,
-	"CMP":   19,
-	"INC":   20,
-	"DEC":   21,
-	"STOP":  22,
+	"ADDV":  3, // PRIVATE
+	"SUB":   4,
+	"SUBV":  5, // PRIVATE
+	"MULT":  6,
+	"MULTV": 7, // PRIVATE
+	"DIV":   8,
+	"DIVV":  9, // PRIVATE
+	"POP":   10,
+	"SET":   11,
+	"MOV":   12,
+	"SHOW":  13,
+	"LOAD":  14,
+	"STORE": 15,
+	"JMP":   16,
+	"JZ":    17,
+	"JNZ":   18,
+	"JE":    19,
+	"JNE":   20,
+	"JLT":   21,
+	"JGT":   22,
+	"CMP":   23,
+	"INC":   24,
+	"DEC":   25,
+	"STOP":  26,
 }
 
 var regs map[string]int64 = map[string]int64{
@@ -55,6 +59,7 @@ var regs map[string]int64 = map[string]int64{
 	"R15": 14,
 	"R16": 15,
 	"Q":   16,
+	"Z":   17,
 }
 
 var numRegisters = len(regs)
@@ -63,6 +68,12 @@ var jmpCodes []int64
 
 func regError(r string) error {
 	return errors.New(fmt.Sprintf("Invalid register: %s", r))
+}
+
+func stripValue(s string) (int64, error) {
+	s = strings.TrimPrefix(s, "$")
+	val, err := strconv.Atoi(s)
+	return int64(val), err
 }
 
 func toIntCodes(line string) ([]int64, error) {
@@ -76,12 +87,16 @@ func toIntCodes(line string) ([]int64, error) {
 	case "NOP", "POP", "STOP":
 		codes, err = parseNoArg(parts)
 	case "JMP", "JE", "JNE", "JLT", "JGT":
-		codes, err = parseValue(parts)
+		codes, err = parseAddr(parts)
 	case "SHOW", "LOAD", "STORE", "INC":
 		codes, err = parseReg(parts)
-	case "PUSH", "SET", "JZ", "JNZ":
+	case "PUSH", "SET":
 		codes, err = parseRegAndVal(parts)
-	case "ADD", "SUB", "MULT", "DIV", "MOV", "CMP":
+	case "JZ", "JNZ":
+		codes, err = parseRegAndAddr(parts)
+	case "ADD", "SUB", "MULT", "DIV":
+		codes, err = parseArithmetic(parts)
+	case "MOV", "CMP":
 		codes, err = parseTwoReg(parts)
 	default:
 		codes, err = nil, errors.New(fmt.Sprintf("Unknown op: %s", op))
@@ -110,7 +125,7 @@ func parseNoArg(parts []string) ([]int64, error) {
 	return []int64{opCodes[parts[0]]}, nil
 }
 
-func parseValue(parts []string) ([]int64, error) {
+func parseAddr(parts []string) ([]int64, error) {
 	if len(parts) != 2 {
 		return nil, errors.New("Invalid arguments")
 	}
@@ -136,7 +151,7 @@ func parseReg(parts []string) ([]int64, error) {
 	}
 }
 
-func parseRegAndVal(parts []string) ([]int64, error) {
+func parseRegAndAddr(parts []string) ([]int64, error) {
 	if len(parts) != 3 {
 		return nil, errors.New("Invalid arguments")
 	}
@@ -147,13 +162,38 @@ func parseRegAndVal(parts []string) ([]int64, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		instrs := []int64{
 			opCodes[parts[0]],
 			reg,
 			int64(val),
 		}
 		return instrs, nil
+	} else {
+		return nil, regError(r)
+	}
+}
+
+func parseRegAndVal(parts []string) ([]int64, error) {
+	if len(parts) != 3 {
+		return nil, errors.New("Invalid arguments")
+	}
+	r := parts[1]
+
+	if reg, ok := regs[r]; ok {
+		if strings.HasPrefix(parts[2], "$") {
+			val, err := stripValue(parts[2])
+			if err != nil {
+				return nil, err
+			}
+			instrs := []int64{
+				opCodes[parts[0]],
+				reg,
+				int64(val),
+			}
+			return instrs, nil
+		} else {
+			return nil, errors.New(fmt.Sprintf("Malformed value: %s", parts[2]))
+		}
 	} else {
 		return nil, regError(r)
 	}
@@ -177,6 +217,46 @@ func parseTwoReg(parts []string) ([]int64, error) {
 			return instrs, nil
 		} else {
 			return nil, regError(r2)
+		}
+	} else {
+		return nil, regError(r1)
+	}
+}
+
+func parseArithmetic(parts []string) ([]int64, error) {
+	if len(parts) != 3 {
+		return nil, errors.New("Invalid arguments")
+	}
+	r1 := parts[1]
+
+	if reg1, ok := regs[r1]; ok {
+		// Use value rather than register
+		if strings.HasPrefix(parts[2], "$") {
+			val, err := stripValue(parts[2])
+			if err != nil {
+				return nil, err
+			}
+			op := (parts[0] + "V")
+			instrs := []int64{
+				opCodes[op],
+				reg1,
+				int64(val),
+			}
+			return instrs, nil
+
+		} else {
+			r2 := parts[2]
+			if reg2, ok := regs[r2]; ok {
+				instrs := []int64{
+					opCodes[parts[0]],
+					reg1,
+					reg2,
+				}
+				return instrs, nil
+			} else {
+				return nil, regError(r2)
+			}
+
 		}
 	} else {
 		return nil, regError(r1)

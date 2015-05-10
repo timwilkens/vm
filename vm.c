@@ -8,9 +8,13 @@ typedef enum{
 	NOP, // Do nothing
 	PUSH, // Push value to stack
 	ADD, // Add values in regs and store in first
+	ADDV,
 	SUB, // Sub reg 1 from reg 2 and store in first
+	SUBV,
 	MULT, // Mult values in regs and store in first
+	MULTV,
 	DIV, // Div reg 1 by reg 2, store in first
+	DIVV,
 	POP, // Pop from stack and print
 	SET, // Set reg to value
 	MOV, // Copy from reg 2 to reg 1
@@ -33,7 +37,8 @@ typedef enum{
 typedef enum {
 	R1, R2,  R3,  R4,  R5,  R6,  R7,  R8,
 	R9, R10, R11, R12, R13, R14, R15, R16,
-	Q,
+	Q, // Store remainder from DIV calls
+	Z, // Store result of last CMP
 	NUM_OF_REGISTERS
 } Registers;
 
@@ -43,191 +48,203 @@ int64_t NUM_INSTR;
 
 // Current instruction pointer.
 // Index into the program array.
-int64_t ip = 0;
+int64_t IP = 0;
 
 // Stack pointer. -1 indicates not set.
-int64_t sp = -1;
+int64_t SP = -1;
 
 // Fixed stack size.
 const int64_t STACK_SIZE = 256;
 int64_t stack[STACK_SIZE];
 
-// Set on CMP instructions.
-// -1 for less, 0 for equal, 1 for greater.
-int z = 0;
-
-// Set on DIV instructions.
-// Contains the quotient.
-int q = 1;
-
-bool running = true;
-
-void eval(int64_t program[]) {
-
-	int64_t instr = program[ip];
-
-	switch (instr) {
-		case NOP: {
-			break;
-		}
-		case STOP: {
-			running = false;
-			break;
-		}
-		case PUSH: {
-			if (++sp >= STACK_SIZE) {
-				printf("*** Stack overflow\n");
-				exit(1);
-			}
-			ip++;
-			stack[sp] = program[ip];
-			break;
-		}
-		case POP: {
-			if (sp < 0) {
-				printf("*** Pop from empty stack\n");
-				exit(1);
-			}
-			int64_t popped = stack[sp--];
-			printf("%lld\n", popped);
-			break;
-		}
-		case ADD: {
-			int64_t r_one = program[++ip];
-			int64_t r_two = program[++ip];
-			regs[r_one] = regs[r_one] + regs[r_two];
-			break;
-		}
-
-		case SUB: {
-			int64_t r_one = program[++ip];
-			int64_t r_two = program[++ip];
-			regs[r_one] = regs[r_one] - regs[r_two];
-			break;
-		}
-
-		case DIV: {
-			int64_t r_one = program[++ip];
-			int64_t r_two = program[++ip];
-			regs[Q] = regs[r_one] % regs[r_two];
-			regs[r_one] = regs[r_one] / regs[r_two];
-			break;
-		}
-		case MULT: {
-			int64_t r_one = program[++ip];
-			int64_t r_two = program[++ip];
-			regs[r_one] = regs[r_one] * regs[r_two];
-			break;
-		}
-		case SET: {
-			int64_t dest = program[++ip];
-			int64_t val = program[++ip];
-			regs[dest] = val;
-			break;
-		}
-		case SHOW: {
-			int64_t val = regs[program[++ip]];
-			printf("%lld\n", val);
-			break;
-		}
-		case MOV: {
-			int64_t r_one = program[++ip];
-			int64_t r_two = program[++ip];
-			regs[r_one] = regs[r_two];
-			break;
-		}
-		case LOAD: {
-			int64_t r = program[++ip];
-
-			if (++sp >= STACK_SIZE) {
-				printf("*** Stack overflow");
-				exit(1);
-			}
-			stack[sp] = regs[r];
-			break;
-		}
-		case STORE: {
-			int64_t val = stack[sp--];
-			int64_t r = program[++ip];
-			regs[r] = val;
-			break;
-		}
-		case JMP: {
-			int64_t addr = program[++ip];
-			ip = (addr-1); // Eval loop increments for us
-			break;
-		}
-		case JZ: {
-			int64_t val = regs[program[++ip]];
-			ip++;
-			if (val == 0) {
-				int64_t addr = program[ip];
-				ip = (addr-1);
-			}
-			break;
-		}
-		case JNZ: {
-			int64_t val = regs[program[++ip]];
-			ip++;
-			if (val != 0) {
-				int64_t addr = program[ip];
-				ip = (addr-1);
-			}
-			break;
-		}
-		case CMP: {
-			int64_t val_one = regs[program[++ip]];
-			int64_t val_two = regs[program[++ip]];
-
-			z = val_one < val_two ? -1 :
-				val_one == val_two ? 0 : 1;
-			break;
-		}
-		case JE: {
-			ip++;
-			if (z == 0) {
-				ip = (program[ip]-1);
-			}
-			break;
-		}
-		case JNE: {
-			ip++;
-			if (z != 0) {
-				ip = (program[ip]-1);
-			}
-			break;
-		}
-		case JLT: {
-			ip++;
-			if (z == -1) {
-				ip = (program[ip]-1);
-			}
-			break;
-		}
-		case JGT: {
-			ip++;
-			if (z == 1) {
-				ip = (program[ip]-1);
-			}
-			break;
-		}
-		case INC: {
-			ip++;
-			regs[program[ip]] += 1;
-			break;
-		}
-		case DEC: {
-			ip++;
-			regs[program[ip]] -= 1;
-			break;
-		}
-	}
-}
 
 void run(int64_t program[]) {
+
+	bool running = true;
+
 	while (running) {
-		eval(program);
-		ip++;
+		int64_t instr = program[IP];
+
+		switch (instr) {
+			case NOP: {
+				break;
+			}
+			case STOP: {
+				running = false;
+				break;
+			}
+			case PUSH: {
+				if (++SP >= STACK_SIZE) {
+					printf("*** Stack overflow\n");
+					exit(1);
+				}
+				IP++;
+				stack[SP] = program[IP];
+				break;
+			}
+			case POP: {
+				if (SP < 0) {
+					printf("*** Pop from empty stack\n");
+					exit(1);
+				}
+				int64_t popped = stack[SP--];
+				printf("%lld\n", popped);
+				break;
+			}
+			case ADD: {
+				int64_t r_one = program[++IP];
+				int64_t r_two = program[++IP];
+				regs[r_one] = regs[r_one] + regs[r_two];
+				break;
+			}
+			case ADDV: {
+				int64_t r_one = program[++IP];
+				int64_t val = program[++IP];
+				regs[r_one] = regs[r_one] + val;
+				break;
+			}
+			case SUB: {
+				int64_t r_one = program[++IP];
+				int64_t r_two = program[++IP];
+				regs[r_one] = regs[r_one] - regs[r_two];
+				break;
+			}
+			case SUBV: {
+				int64_t r_one = program[++IP];
+				int64_t val = program[++IP];
+				regs[r_one] = regs[r_one] - val;
+				break;
+			}
+			case DIV: {
+				int64_t r_one = program[++IP];
+				int64_t r_two = program[++IP];
+				regs[Q] = regs[r_one] % regs[r_two];
+				regs[r_one] = regs[r_one] / regs[r_two];
+				break;
+			}
+			case DIVV: {
+				int64_t r_one = program[++IP];
+				int64_t val = program[++IP];
+				regs[Q] = regs[r_one] % val;
+				regs[r_one] = regs[r_one] / val;
+				break;
+			}
+			case MULT: {
+				int64_t r_one = program[++IP];
+				int64_t r_two = program[++IP];
+				regs[r_one] = regs[r_one] * regs[r_two];
+				break;
+			}
+			case MULTV: {
+				int64_t r_one = program[++IP];
+				int64_t val = program[++IP];
+				regs[r_one] = regs[r_one] * val;
+				break;
+			}
+			case SET: {
+				int64_t dest = program[++IP];
+				int64_t val = program[++IP];
+				regs[dest] = val;
+				break;
+			}
+			case SHOW: {
+				int64_t val = regs[program[++IP]];
+				printf("%lld\n", val);
+				break;
+			}
+			case MOV: {
+				int64_t r_one = program[++IP];
+				int64_t r_two = program[++IP];
+				regs[r_one] = regs[r_two];
+				break;
+			}
+			case LOAD: {
+				int64_t r = program[++IP];
+	
+				if (++SP >= STACK_SIZE) {
+					printf("*** Stack overflow");
+					exit(1);
+				}
+				stack[SP] = regs[r];
+				break;
+			}
+			case STORE: {
+				int64_t val = stack[SP--];
+				int64_t r = program[++IP];
+				regs[r] = val;
+				break;
+			}
+			case JMP: {
+				int64_t addr = program[++IP];
+				IP = (addr-1); // Eval loop increments for us
+				break;
+			}
+			case JZ: {
+				int64_t val = regs[program[++IP]];
+				IP++;
+				if (val == 0) {
+					int64_t addr = program[IP];
+					IP = (addr-1);
+				}
+				break;
+			}
+			case JNZ: {
+				int64_t val = regs[program[++IP]];
+				IP++;
+				if (val != 0) {
+					int64_t addr = program[IP];
+					IP = (addr-1);
+				}
+				break;
+			}
+			case CMP: {
+				int64_t val_one = regs[program[++IP]];
+				int64_t val_two = regs[program[++IP]];
+	
+				regs[Z] = val_one < val_two ? -1 :
+					val_one == val_two ? 0 : 1;
+				break;
+			}
+			case JE: {
+				IP++;
+				if (regs[Z] == 0) {
+					IP = (program[IP]-1);
+				}
+				break;
+			}
+			case JNE: {
+				IP++;
+				if (regs[Z] != 0) {
+					IP = (program[IP]-1);
+				}
+				break;
+			}
+			case JLT: {
+				IP++;
+				if (regs[Z] == -1) {
+					IP = (program[IP]-1);
+				}
+				break;
+			}
+			case JGT: {
+				IP++;
+				if (regs[Z] == 1) {
+					IP = (program[IP]-1);
+				}
+				break;
+			}
+			case INC: {
+				IP++;
+				regs[program[IP]] += 1;
+				break;
+			}
+			case DEC: {
+				IP++;
+				regs[program[IP]] -= 1;
+				break;
+			}
+		}
+		IP++;
 	}
 }
 

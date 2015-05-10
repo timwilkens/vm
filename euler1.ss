@@ -1,14 +1,14 @@
 # Iteration var
-SET R1 1
+SET R1 $1
 # Accumulator
-SET R2 0
+SET R2 $0
 # Stop condition
-SET R3 1000
-SET R5 0
+SET R3 $1000
+SET R5 $0
 
 # Store in Regs for now until we support OPs on values
-SET R6 3
-SET R7 5
+SET R6 $3
+SET R7 $5
 
 # See if divisible by 3
 # Copy into R4 to overwrite
