@@ -56,6 +56,8 @@ var regs map[string]int64 = map[string]int64{
 
 var numRegisters = 16
 
+var jmpCodes []int64
+
 func regError(r string) error {
 	return errors.New(fmt.Sprintf("Invalid register: %s", r))
 }
@@ -64,20 +66,34 @@ func toIntCodes(line string) ([]int64, error) {
 	parts := strings.Split(line, " ")
 	op := parts[0]
 
+	var codes []int64
+	var err error
+
 	switch op {
 	case "NOP", "POP", "STOP":
-		return parseNoArg(parts)
+		codes, err = parseNoArg(parts)
 	case "JMP", "JE", "JNE", "JLT", "JGT":
-		return parseValue(parts)
+		codes, err = parseValue(parts)
 	case "SHOW", "LOAD", "STORE":
-		return parseReg(parts)
+		codes, err = parseReg(parts)
 	case "PUSH", "SET", "JZ", "JNZ":
-		return parseRegAndVal(parts)
+		codes, err = parseRegAndVal(parts)
 	case "ADD", "SUB", "MULT", "DIV", "MOV", "CMP":
-		return parseTwoReg(parts)
+		codes, err = parseTwoReg(parts)
 	default:
-		return nil, errors.New(fmt.Sprintf("Unknown op: %s", op))
+		codes, err = nil, errors.New(fmt.Sprintf("Unknown op: %s", op))
 	}
+
+	// Store jump addresses.
+	// Check after all codes have been parsed.
+	switch op {
+	case "JMP", "JE", "JNE", "JTL", "JGT":
+		jmpCodes = append(jmpCodes, codes[1])
+	case "JZ", "JNZ":
+		jmpCodes = append(jmpCodes, codes[2])
+	}
+
+	return codes, err
 }
 
 func parseNoArg(parts []string) ([]int64, error) {
@@ -188,6 +204,10 @@ func main() {
 
 	var instructions []int64
 
+	// Record the offsets for all instructions.
+	// Any jump instruction must be to one of these.
+	jmpPoints := make(map[int64]bool)
+
 	for {
 		line, err := reader.ReadString('\n')
 		line = strings.TrimSuffix(line, "\n")
@@ -195,11 +215,21 @@ func main() {
 		if err != nil {
 			break
 		}
+
+		jmpPoints[int64(len(instructions))] = true
+
 		codes, err := toIntCodes(line)
 		maybeDie(err)
 
 		for _, c := range codes {
 			instructions = append(instructions, c)
+		}
+	}
+
+	// Check that jumps are valid.
+	for _, jc := range jmpCodes {
+		if !jmpPoints[jc] {
+			maybeDie(errors.New(fmt.Sprintf("Invalid jump addr: %d", jc)))
 		}
 	}
 

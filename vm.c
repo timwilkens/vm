@@ -55,15 +55,6 @@ int z = 0;
 
 bool running = true;
 
-// Ensure ++ip is valid.
-// Die if it isn't.
-void validate_ip(char *func) {
-	if (++ip >= NUM_INSTR) {
-		printf("*** Not enough args to %s\n", func);
-		exit(1);
-	}
-}
-
 void eval(int64_t program[]) {
 
 	int64_t instr = program[ip];
@@ -81,7 +72,7 @@ void eval(int64_t program[]) {
 				printf("*** Stack overflow\n");
 				exit(1);
 			}
-			validate_ip("PUSH");
+			ip++;
 			stack[sp] = program[ip];
 			break;
 		}
@@ -95,77 +86,50 @@ void eval(int64_t program[]) {
 			break;
 		}
 		case ADD: {
-			validate_ip("ADD");
-			int64_t r_one = program[ip];
-
-			validate_ip("ADD");
-			int64_t r_two = program[ip];
-
+			int64_t r_one = program[++ip];
+			int64_t r_two = program[++ip];
 			regs[r_one] = regs[r_one] + regs[r_two];
 			break;
 		}
 
 		case SUB: {
-			validate_ip("SUB");
-			int64_t r_one = program[ip];
-
-			validate_ip("SUB");
-			int64_t r_two = program[ip];
-
+			int64_t r_one = program[++ip];
+			int64_t r_two = program[++ip];
 			regs[r_one] = regs[r_one] - regs[r_two];
 			break;
 		}
 
 		case DIV: {
-			validate_ip("DIV");
-			int64_t r_one = program[ip];
-
-			validate_ip("DIV");
-			int64_t r_two = program[ip];
-
+			int64_t r_one = program[++ip];
+			int64_t r_two = program[++ip];
 			regs[r_one] = regs[r_one] / regs[r_two];
 			break;
 		}
 		case MULT: {
-			validate_ip("MULT");
-			int64_t r_one = program[ip];
-
-			validate_ip("MULT");
-			int64_t r_two = program[ip];
-
+			int64_t r_one = program[++ip];
+			int64_t r_two = program[++ip];
 			regs[r_one] = regs[r_one] * regs[r_two];
 			break;
 		}
 		case SET: {
-			validate_ip("SET");
-			int64_t dest = program[ip];
-
-			validate_ip("SET");
-			int64_t val = program[ip];
-
+			int64_t dest = program[++ip];
+			int64_t val = program[++ip];
 			regs[dest] = val;
 			break;
 		}
 		case SHOW: {
-			validate_ip("SHOW");
-
-			int64_t val = regs[program[ip]];
+			int64_t val = regs[program[++ip]];
 			printf("%lld\n", val);
 			break;
 		}
 		case MOV: {
-			validate_ip("MOV");
-			int64_t r_one = program[ip];
-
-			validate_ip("MOV");
-			int64_t r_two = program[ip];
-
+			int64_t r_one = program[++ip];
+			int64_t r_two = program[++ip];
 			regs[r_one] = regs[r_two];
 			break;
 		}
 		case LOAD: {
-			validate_ip("LOAD");
-			int64_t r = program[ip];
+			int64_t r = program[++ip];
 
 			if (++sp >= STACK_SIZE) {
 				printf("*** Stack overflow");
@@ -176,23 +140,18 @@ void eval(int64_t program[]) {
 		}
 		case STORE: {
 			int64_t val = stack[sp--];
-			validate_ip("STORE");
-			int64_t r = program[ip];
-
+			int64_t r = program[++ip];
 			regs[r] = val;
 			break;
 		}
 		case JMP: {
-			validate_ip("JMP");
-			int64_t addr = program[ip];
+			int64_t addr = program[++ip];
 			ip = (addr-1); // Eval loop increments for us
 			break;
 		}
 		case JZ: {
-			validate_ip("JZ");
-
-			int64_t val = regs[program[ip]];
-			validate_ip("JZ");
+			int64_t val = regs[program[++ip]];
+			ip++;
 			if (val == 0) {
 				int64_t addr = program[ip];
 				ip = (addr-1);
@@ -200,10 +159,8 @@ void eval(int64_t program[]) {
 			break;
 		}
 		case JNZ: {
-			validate_ip("JNZ");
-
-			int64_t val = regs[program[ip]];
-			validate_ip("JNZ");
+			int64_t val = regs[program[++ip]];
+			ip++;
 			if (val != 0) {
 				int64_t addr = program[ip];
 				ip = (addr-1);
@@ -211,42 +168,36 @@ void eval(int64_t program[]) {
 			break;
 		}
 		case CMP: {
-			validate_ip("CMP");
-			int64_t r_one = program[ip];
-
-			validate_ip("CMP");
-			int64_t r_two = program[ip];
-
-			int64_t val_one = regs[r_one];
-			int64_t val_two = regs[r_two];
+			int64_t val_one = regs[program[++ip]];
+			int64_t val_two = regs[program[++ip]];
 
 			z = val_one < val_two ? -1 :
 				val_one == val_two ? 0 : 1;
 			break;
 		}
 		case JE: {
-			validate_ip("JE");
+			ip++;
 			if (z == 0) {
 				ip = (program[ip]-1);
 			}
 			break;
 		}
 		case JNE: {
-			validate_ip("JNE");
+			ip++;
 			if (z != 0) {
 				ip = (program[ip]-1);
 			}
 			break;
 		}
 		case JLT: {
-			validate_ip("JLT");
+			ip++;
 			if (z == -1) {
 				ip = (program[ip]-1);
 			}
 			break;
 		}
 		case JGT: {
-			validate_ip("JGT");
+			ip++;
 			if (z == 1) {
 				ip = (program[ip]-1);
 			}
