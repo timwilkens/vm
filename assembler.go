@@ -79,7 +79,6 @@ func stripValue(s string) (int64, error) {
 	return int64(val), err
 }
 
-//var isLabel = regexp.MustCompile(`^[A-Z]$`)
 var isLabel = regexp.MustCompile(`[A-Z]$`)
 
 func toIntCodes(parts []string) ([]int64, error) {
@@ -299,6 +298,9 @@ func die(s string) {
 	os.Exit(1)
 }
 
+var labelPrefix = "!"
+var commentPrefix = "#"
+
 func main() {
 	in := flag.String("in", "", "Input file")
 	out := flag.String("out", "", "Output file")
@@ -343,7 +345,7 @@ func main() {
 		}
 
 		// Support blank lines and comments
-		if line == "" || strings.HasPrefix(line, "#") {
+		if line == "" || strings.HasPrefix(line, commentPrefix) {
 			// Needed for correct line numbers
 			lines = append(lines, line)
 			continue
@@ -353,10 +355,10 @@ func main() {
 
 		// Record ip location for labels
 		// Strip label from instruction
-		if strings.HasPrefix(line, "!") {
+		if strings.HasPrefix(line, labelPrefix) {
 			parts := strings.Split(line, " ")
 			label := parts[0]
-			label = strings.TrimPrefix(label, "!")
+			label = strings.TrimPrefix(label, labelPrefix)
 			jmpLabels[label] = instructionNum
 			line = strings.Join(parts[1:], " ")
 		}
