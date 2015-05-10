@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unsafe"
 )
 
 var opCodes map[string]int64 = map[string]int64{
@@ -107,8 +108,10 @@ func toIntCodes(parts []string) ([]int64, error) {
 		if err == nil {
 			jmpCodes = append(jmpCodes, codes[2])
 		}
+	// Polymorphic. First arg register, second either register
+	// or value starting with '$'
 	case "ADD", "SUB", "MULT", "DIV", "MOV", "CMP":
-		codes, err = parseTwoReg(parts)
+		codes, err = parseTwoArg(parts)
 	default:
 		codes, err = nil, errors.New(fmt.Sprintf("Unknown op: %s", op))
 	}
@@ -217,33 +220,7 @@ func parseRegAndAddr(parts []string) ([]int64, error) {
 	}
 }
 
-func parseRegAndVal(parts []string) ([]int64, error) {
-	if len(parts) != 3 {
-		return nil, errors.New("Invalid arguments")
-	}
-	r := parts[1]
-
-	if reg, ok := regs[r]; ok {
-		if strings.HasPrefix(parts[2], "$") {
-			val, err := stripValue(parts[2])
-			if err != nil {
-				return nil, err
-			}
-			instrs := []int64{
-				opCodes[parts[0]],
-				reg,
-				int64(val),
-			}
-			return instrs, nil
-		} else {
-			return nil, errors.New(fmt.Sprintf("Malformed value: %s", parts[2]))
-		}
-	} else {
-		return nil, regError(r)
-	}
-}
-
-func parseTwoReg(parts []string) ([]int64, error) {
+func parseTwoArg(parts []string) ([]int64, error) {
 	if len(parts) != 3 {
 		return nil, errors.New("Invalid arguments")
 	}
@@ -293,6 +270,17 @@ func maybeDie(err error) {
 func die(s string) {
 	fmt.Println(s)
 	os.Exit(1)
+}
+
+func nativeByteOrder() binary.ByteOrder {
+	i := uint32(10)
+	u := unsafe.Pointer(&i)
+	leadByte := (*byte)(u)
+	if *leadByte == 10 {
+		return binary.LittleEndian
+	} else {
+		return binary.BigEndian
+	}
 }
 
 var labelPrefix = "!"
@@ -394,8 +382,10 @@ func main() {
 	buf := bufio.NewWriter(binFile)
 	defer buf.Flush()
 
+	byteOrder := nativeByteOrder()
+
 	for _, instr := range instructions {
-		err = binary.Write(buf, binary.LittleEndian, instr)
+		err = binary.Write(buf, byteOrder, instr)
 		maybeDie(err)
 	}
 }

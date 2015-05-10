@@ -58,8 +58,10 @@ int64_t IP = 0;
 // Stack pointer. -1 indicates not set.
 int64_t SP = -1;
 
-// Arbitrary size;
-int64_t frame_ptrs[1024];
+// Only allow 5000 nested function calls.
+// Could choose to grow this.
+const int64_t MAX_FRAMES = 5000;
+int64_t frame_ptrs[MAX_FRAMES];
 int64_t FP = 0;
 
 // Fixed stack size.
@@ -138,6 +140,10 @@ void store_context() {
 	push_r(Q);
 	push_r(Z);
 	push_v(IP);
+	if (FP >= MAX_FRAMES) {
+		printf("*** Max Frames exceeded\n");
+		exit(1);
+	}
 	frame_ptrs[FP] = SP;
 	FP++;
 }
