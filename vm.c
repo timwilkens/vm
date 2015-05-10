@@ -32,6 +32,8 @@ typedef enum{
 	INC, // increment value in reg by 1
 	DEC, // decrement value in reg by 1
 	PRINT, // print character stored in reg
+	CALL, // Store regs, jump to label and execute
+	RET, // Restore regs and jump back from function call
 	STOP // End
 } InstructionSet;
 
@@ -54,10 +56,75 @@ int64_t IP = 0;
 // Stack pointer. -1 indicates not set.
 int64_t SP = -1;
 
+// Base of current stack frame
+int64_t EBP = 0;
+
 // Fixed stack size.
-const int64_t STACK_SIZE = 256;
+const int64_t STACK_SIZE = 1024;
 int64_t stack[STACK_SIZE];
 
+void push_r(int64_t r) {
+	if (++SP >= STACK_SIZE) {
+		printf("*** Stack overflow\n");
+		exit(1);
+	}
+	stack[SP] = regs[r];
+}
+
+void push_v(int64_t v) {
+	if (++SP >= STACK_SIZE) {
+		printf("*** Stack overflow\n");
+		exit(1);
+	}
+	stack[SP] = v;
+}
+
+int64_t pop() {
+	if (SP < -1) {
+		printf("*** Pop from empty stack\n");
+		exit(1);
+	}
+	return stack[SP--];
+}
+
+// Store context for function calls.
+// Conventions are: registers R1-r10 will be restored
+// along with Q and Z.
+// Registers R11-16 should be used to return values.
+// Arguments can be passed in any registers.
+void store_context() {
+	push_r(R1);
+	push_r(R2);
+	push_r(R3);
+	push_r(R4);
+	push_r(R5);
+	push_r(R6);
+	push_r(R7);
+	push_r(R8);
+	push_r(R9);
+	push_r(R10);
+	push_r(Q);
+	push_r(Z);
+	push_v(IP);
+	EBP = SP;
+}
+
+void restore_context() {
+	SP = EBP;
+	IP = pop();
+	regs[Z] = pop();
+	regs[Q] = pop();
+	regs[R10] = pop();
+	regs[R9] = pop();
+	regs[R8] = pop();
+	regs[R7] = pop();
+	regs[R6] = pop();
+	regs[R5] = pop();
+	regs[R4] = pop();
+	regs[R3] = pop();
+	regs[R2] = pop();
+	regs[R1] = pop();
+}
 
 void run(int64_t program[]) {
 
@@ -248,6 +315,16 @@ void run(int64_t program[]) {
 				// Don't put large stuff in here.
 				printf("%c", (int)regs[r]);
 				break;
+			}
+			case CALL: {
+				// Store context with incremented IP
+				IP++;
+				store_context();
+				IP = (program[IP]-1);
+				break;
+			}
+			case RET: {
+				restore_context();
 			}
 		}
 		IP++;

@@ -40,7 +40,9 @@ var opCodes map[string]int64 = map[string]int64{
 	"INC":   24,
 	"DEC":   25,
 	"PRINT": 26,
-	"STOP":  27,
+	"CALL":  27,
+	"RET":   28,
+	"STOP":  29,
 }
 
 var regs map[string]int64 = map[string]int64{
@@ -88,9 +90,9 @@ func toIntCodes(parts []string) ([]int64, error) {
 	var err error
 
 	switch op {
-	case "NOP", "POP", "STOP":
+	case "NOP", "POP", "STOP", "RET":
 		codes, err = parseNoArg(parts)
-	case "JMP", "JE", "JNE", "JLT", "JGT":
+	case "JMP", "JE", "JNE", "JLT", "JGT", "CALL":
 		codes, err = parseAddr(parts)
 		if err == nil {
 			jmpCodes = append(jmpCodes, codes[1])
@@ -139,7 +141,6 @@ func parseAddr(parts []string) ([]int64, error) {
 			return nil, errors.New(fmt.Sprintf("Invalid jmp label: %s", parts[1]))
 		}
 	} else {
-		fmt.Println("NON LABEL")
 		val, err := strconv.Atoi(parts[1])
 		if err != nil {
 			return nil, err
