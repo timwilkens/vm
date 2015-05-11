@@ -34,6 +34,7 @@ typedef enum{
 	INC, // increment value in reg by 1
 	DEC, // decrement value in reg by 1
 	PRINT, // print character stored in reg
+	PRINTV,
 	CALL, // Store regs, jump to label and execute
 	RET, // Restore regs and jump back from function call
 	STOP // End
@@ -355,6 +356,13 @@ void run(int64_t program[]) {
 				// Cast down.
 				// Don't put large stuff in here.
 				printf("%c", (int)regs[r]);
+				break;
+			}
+			case PRINTV: {
+				int64_t v = program[++IP];
+				// Cast down.
+				// Don't put large stuff in here.
+				printf("%c", (int)v);
 				break;
 			}
 			case CALL: {

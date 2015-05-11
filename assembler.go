@@ -14,37 +14,38 @@ import (
 )
 
 var opCodes map[string]int64 = map[string]int64{
-	"NOP":   0,
-	"PUSH":  1,
-	"ADD":   2,
-	"ADDV":  3, // PRIVATE
-	"SUB":   4,
-	"SUBV":  5, // PRIVATE
-	"MULT":  6,
-	"MULTV": 7, // PRIVATE
-	"DIV":   8,
-	"DIVV":  9, // PRIVATE
-	"POP":   10,
-	"MOV":   11,
-	"MOVV":  12, // PRIVATE
-	"SHOW":  13,
-	"LOAD":  14,
-	"STORE": 15,
-	"JMP":   16,
-	"JZ":    17,
-	"JNZ":   18,
-	"JE":    19,
-	"JNE":   20,
-	"JLT":   21,
-	"JGT":   22,
-	"CMP":   23,
-	"CMPV":  24, // PRIVATE
-	"INC":   25,
-	"DEC":   26,
-	"PRINT": 27,
-	"CALL":  28,
-	"RET":   29,
-	"STOP":  30,
+	"NOP":    0,
+	"PUSH":   1,
+	"ADD":    2,
+	"ADDV":   3, // PRIVATE
+	"SUB":    4,
+	"SUBV":   5, // PRIVATE
+	"MULT":   6,
+	"MULTV":  7, // PRIVATE
+	"DIV":    8,
+	"DIVV":   9, // PRIVATE
+	"POP":    10,
+	"MOV":    11,
+	"MOVV":   12, // PRIVATE
+	"SHOW":   13,
+	"LOAD":   14,
+	"STORE":  15,
+	"JMP":    16,
+	"JZ":     17,
+	"JNZ":    18,
+	"JE":     19,
+	"JNE":    20,
+	"JLT":    21,
+	"JGT":    22,
+	"CMP":    23,
+	"CMPV":   24, // PRIVATE
+	"INC":    25,
+	"DEC":    26,
+	"PRINT":  27,
+	"PRINTV": 28,
+	"CALL":   29,
+	"RET":    30,
+	"STOP":   31,
 }
 
 var regs map[string]int64 = map[string]int64{
@@ -101,8 +102,10 @@ func toIntCodes(parts []string) ([]int64, error) {
 		}
 	case "PUSH":
 		codes, err = parseVal(parts)
-	case "SHOW", "LOAD", "STORE", "INC", "DEC", "PRINT":
+	case "SHOW", "LOAD", "STORE", "INC", "DEC":
 		codes, err = parseReg(parts)
+	case "PRINT":
+		codes, err = parsePrint(parts)
 	case "JZ", "JNZ":
 		codes, err = parseRegAndAddr(parts)
 		if err == nil {
@@ -184,6 +187,26 @@ func parseReg(parts []string) ([]int64, error) {
 	} else {
 		return nil, regError(parts[1])
 	}
+}
+
+var isChar = regexp.MustCompile(`^'.'$`)
+
+func parsePrint(parts []string) ([]int64, error) {
+	if len(parts) != 2 {
+		return nil, errors.New("Invalid arguments")
+	}
+
+	if isChar.MatchString(parts[1]) {
+		charStr := parts[1]
+		c := charStr[1]
+		op := (parts[0] + "V")
+		return []int64{opCodes[op], int64(c)}, nil
+	} else if reg, ok := regs[parts[1]]; ok {
+		return []int64{opCodes[parts[0]], reg}, nil
+	} else {
+		return nil, errors.New(fmt.Sprintf("Arg to Print must be reg or single char: %s", parts[1]))
+	}
+
 }
 
 func parseRegAndAddr(parts []string) ([]int64, error) {
